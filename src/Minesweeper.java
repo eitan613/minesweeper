@@ -1,26 +1,78 @@
+import javafx.print.PrinterJob;
+
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.File;
 import java.util.Random;
 
-public class Minesweeper { //hashmap, point array, make them ints and bombs ++ neighbors
-    private JFrame board;
+public class Minesweeper { //reorganize, hashmap, point array, make them ints and bombs ++ neighbors
+    private JFrame frame;
+    private JPanel board;
     private JButton[][] buttons;
-    MinesweeperModel mm;
-    ImageIcon flag;
+    private int boardSize;
+    private MinesweeperModel mm;
+    private ImageIcon flag;
+    private enum Difficulty{EASY, MEDIUM, HARD}
+    private Difficulty difficulty;
+    private JMenuBar menuBar = new JMenuBar();
+    private JMenu menu = new JMenu("Choose difficulty");
+    private JMenuItem easy = new JMenuItem("Easy");
+    private JMenuItem medium = new JMenuItem("Medium");
+    private JMenuItem hard = new JMenuItem("Hard");
+    private int bombAmount;
+    private JLabel status;
 
-    public Minesweeper(){
-        buttons = new JButton[10][10];
-        board = new JFrame();
-        board.setSize(500, 500);
-        board.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        board.setLayout(new GridLayout(10, 10));
-        for (int row = 0; row < 10; row++) {
-            for (int col = 0; col < 10; col++) {
+    public Minesweeper(Difficulty d){
+        difficulty = d;
+        if (difficulty == Difficulty.EASY){
+            boardSize = 10;
+            bombAmount = 10;
+        }
+        else if (difficulty == Difficulty.MEDIUM){
+            boardSize = 16;
+            bombAmount = 40;
+        }
+        else if (difficulty == Difficulty.HARD){
+            boardSize = 24;
+            bombAmount = 99;
+        }
+        buttons = new JButton[boardSize][boardSize];
+        frame = new JFrame();
+        board = new JPanel();
+        status = new JLabel(bombAmount+"");
+        menuBar.add(menu);
+        easy.addActionListener(e -> {
+            difficulty = Difficulty.EASY;
+            frame.dispose();
+            Minesweeper minesweeper = new Minesweeper(difficulty);
+        });
+        menu.add(easy);
+        medium.addActionListener(e -> {
+            difficulty = Difficulty.MEDIUM;
+            frame.dispose();
+            Minesweeper minesweeper = new Minesweeper(difficulty);
+        });
+        menu.add(medium);
+        hard.addActionListener(e -> {
+            difficulty = Difficulty.HARD;
+            frame.dispose();
+            Minesweeper minesweeper = new Minesweeper(difficulty);
+        });
+        menu.add(hard);
+        frame.setJMenuBar(menuBar);
+        frame.setSize(1000, 800);
+        frame.add(status,BorderLayout.NORTH);
+        status.setHorizontalAlignment(JLabel.CENTER);
+        frame.add(board);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        board.setLayout(new GridLayout(boardSize, boardSize));
+        for (int row = 0; row < boardSize; row++) {
+            for (int col = 0; col < boardSize; col++) {
                 buttons[row][col] = new JButton();
-                buttons[row][col].setSize(board.getWidth() / 10, board.getHeight() / 10);
+                buttons[row][col].setSize(frame.getWidth() / boardSize, frame.getHeight() / boardSize);
             }
         }
         flag = new ImageIcon("src\\resources\\flag.png");
@@ -33,8 +85,8 @@ public class Minesweeper { //hashmap, point array, make them ints and bombs ++ n
     public void gameBoard() {
         mm = new MinesweeperModel();
         mm.setBoard();
-        for (int row = 0; row < 10; row++) {
-            for (int col = 0; col < 10; col++) {
+        for (int row = 0; row < boardSize; row++) {
+            for (int col = 0; col < boardSize; col++) {
                 int finalRow = row;
                 int finalCol = col;
                 buttons[row][col].addMouseListener(new MouseAdapter() {
@@ -42,10 +94,16 @@ public class Minesweeper { //hashmap, point array, make them ints and bombs ++ n
                     public void mouseClicked(MouseEvent e) {
                         super.mouseClicked(e);
                         if (SwingUtilities.isRightMouseButton(e)){
-                            if (buttons[finalRow][finalCol].getIcon() == null)
+                            if (buttons[finalRow][finalCol].getIcon() == null){
                                 buttons[finalRow][finalCol].setIcon(flag);
-                            else
+                                bombAmount--;
+                                status.setText(bombAmount+"");
+                            }
+                            else{
                                 buttons[finalRow][finalCol].setIcon(null);
+                                bombAmount++;
+                                status.setText(bombAmount+"");
+                            }
                         }
                         else{
                             if (buttons[finalRow][finalCol].getIcon() != null){
@@ -60,21 +118,21 @@ public class Minesweeper { //hashmap, point array, make them ints and bombs ++ n
                 board.add(buttons[row][col]);
             }
         }
-        board.setVisible(true);
+        frame.setVisible(true);
     }
 
     public static void main(String[] args) {
-        Minesweeper game = new Minesweeper();
+        Minesweeper game = new Minesweeper(Difficulty.EASY);
     }
     class MinesweeperModel {
-        boolean[][] board;
-        boolean[][] playedYet = new boolean[10][10];
-        Random randomInt;
-        boolean gameOver;
-        ImageIcon bomb;
+        private boolean[][] board;
+        private boolean[][] playedYet = new boolean[boardSize][boardSize];
+        private Random randomInt;
+        private boolean gameOver;
+        private ImageIcon bomb;
 
         public MinesweeperModel(){
-            board = new boolean[10][10];
+            board = new boolean[boardSize][boardSize];
             randomInt = new Random();
             gameOver = false;
             bomb = new ImageIcon("src\\resources\\bomb.png");
@@ -86,10 +144,10 @@ public class Minesweeper { //hashmap, point array, make them ints and bombs ++ n
         public void setBoard() {
             int row;
             int column;
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < bombAmount; i++) {
                 do {
-                    row = randomInt.nextInt(10);
-                    column = randomInt.nextInt(10);
+                    row = randomInt.nextInt(boardSize);
+                    column = randomInt.nextInt(boardSize);
                 } while (board[row][column]);
                 board[row][column] = true; //true == bomb
             }
@@ -117,19 +175,19 @@ public class Minesweeper { //hashmap, point array, make them ints and bombs ++ n
                         total++;
             }*/
             int total = 0;
-            if ((row + 1 < 10) && board[row + 1][col]) //directly underneath
+            if ((row + 1 < boardSize) && board[row + 1][col]) //directly underneath
                 total++;
-            if ((row + 1 < 10) && ((col + 1 < 10)) && board[row + 1][col + 1]) //bottom right corner
+            if ((row + 1 < boardSize) && ((col + 1 < boardSize)) && board[row + 1][col + 1]) //bottom right corner
                 total++;
-            if ((row + 1 < 10) && (col - 1 >= 0) && board[row + 1][col - 1]) //bottom left corner
+            if ((row + 1 < boardSize) && (col - 1 >= 0) && board[row + 1][col - 1]) //bottom left corner
                 total++;
-            if ((col + 1 < 10) && board[row][col + 1]) //right
+            if ((col + 1 < boardSize) && board[row][col + 1]) //right
                 total++;
             if ((col - 1 >= 0) && board[row][col - 1]) //left
                 total++;
             if ((row - 1 >= 0) && board[row - 1][col]) //directly on top
                 total++;
-            if ((col + 1 < 10) && (row - 1 >= 0) && board[row - 1][col + 1]) //top right corner
+            if ((col + 1 < boardSize) && (row - 1 >= 0) && board[row - 1][col + 1]) //top right corner
                 total++;
             if ((row - 1 >= 0) && (col - 1 >= 0) && board[row - 1][col - 1]) //top left corner
                 total++;
@@ -139,8 +197,8 @@ public class Minesweeper { //hashmap, point array, make them ints and bombs ++ n
         public void buttonPressed(int row, int col) {
             if (board[row][col]) //bomb
             {
-                for (int r = 0; r < 10; r++) {
-                    for (int c = 0; c < 10; c++) {
+                for (int r = 0; r < boardSize; r++) {
+                    for (int c = 0; c < boardSize; c++) {
                         if (board[r][c])
                             buttons[r][c].setIcon(bomb);
                     }
@@ -156,26 +214,26 @@ public class Minesweeper { //hashmap, point array, make them ints and bombs ++ n
                 playedYet[row][col] = true;
 
                 if (SurroundingBombs == 0) {
-                    if (col + 1 < 10 && !playedYet[row][col + 1])
+                    if (col + 1 < boardSize && !playedYet[row][col + 1])
                         buttonPressed(row, col + 1);//right
                     if (col - 1 >= 0 && !playedYet[row][col - 1])
                         buttonPressed(row, col - 1);//left
-                    if ((col + 1 < 10) && (row + 1 < 10) && !playedYet[row + 1][col + 1])
+                    if ((col + 1 < boardSize) && (row + 1 < boardSize) && !playedYet[row + 1][col + 1])
                         buttonPressed(row + 1, col + 1);//bottom right corner
-                    if ((row + 1 < 10) && !playedYet[row + 1][col])
+                    if ((row + 1 < boardSize) && !playedYet[row + 1][col])
                         buttonPressed(row + 1, col);//directly underneath
-                    if ((row + 1 < 10) && (col - 1 >= 0) && !playedYet[row + 1][col - 1])
+                    if ((row + 1 < boardSize) && (col - 1 >= 0) && !playedYet[row + 1][col - 1])
                         buttonPressed(row + 1, col - 1);//bottom left corner
                     if ((row - 1 >= 0) && (col - 1 >= 0) && !playedYet[row - 1][col - 1])
                         buttonPressed(row - 1, col - 1);//top left corner
                     if ((row - 1 >= 0) && !playedYet[row - 1][col])
                         buttonPressed(row - 1, col);//directly above
-                    if ((row - 1 >= 0) && (col + 1 < 10) && !playedYet[row - 1][col + 1])
+                    if ((row - 1 >= 0) && (col + 1 < boardSize) && !playedYet[row - 1][col + 1])
                         buttonPressed(row - 1, col + 1);//top right corner
                 }
                 int pressedButtons = 0;
-                for (int r = 0; r < 10; r++) {
-                    for (int c = 0; c < 10; c++) {
+                for (int r = 0; r < boardSize; r++) {
+                    for (int c = 0; c < boardSize; c++) {
                         if (!board[r][c] && playedYet[r][c])
                          pressedButtons++;
                     }
@@ -189,15 +247,15 @@ public class Minesweeper { //hashmap, point array, make them ints and bombs ++ n
     }
     public void playAgain(){
         try {
-            String replay = JOptionPane.showInputDialog("Type Y to play again.");
-            if (replay.equalsIgnoreCase("Y")) {
-                board.dispose();
-                Minesweeper game = new Minesweeper();
+            String replay = JOptionPane.showInputDialog("Type play again to play again.");
+            if (replay.equalsIgnoreCase("play again")) {
+                frame.dispose();
+                Minesweeper minesweeper = new Minesweeper(difficulty);
             }
             else
-                board.dispose();
+                frame.dispose();
         } catch (NullPointerException e){
-            board.dispose();
+            frame.dispose();
         }
     }
 }
