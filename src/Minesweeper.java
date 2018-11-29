@@ -14,63 +14,80 @@ public class Minesweeper {
     private JMenuItem hard = new JMenuItem("Hard");
     private JLabel status;
     private ImageIcon flag;
+    private ImageIcon bomb;
     private int bombAmount;
     private int boardSize;
+
+    public void placeBombIcons() {
+        Point location = new Point();
+        for (int r = 0; r < boardSize; r++) {
+            for (int c = 0; c < boardSize; c++) {
+                location.setLocation(c,r);
+                if (mm.isBomb(location))
+                    buttons[c][r].setIcon(bomb);
+            }
+        }
+    }
+
     public enum Difficulty{EASY, MEDIUM, HARD;}
     private Difficulty difficulty;
     private MinesweeperModel mm;
 
     public Minesweeper(Difficulty d){
-        setDifficulty(d);
+        mm = new MinesweeperModel(d);
+        bombAmount = mm.getBombAmount();
+        boardSize = mm.getBoardSize();
         setFrame();
         setBoard();
         setMenu();
         setStatus();
         setButtons();
-        setFlagImage();
+        flag = setImage("src\\resources\\flag.png");
+        bomb = setImage("src\\resources\\bomb.png");
         frame.setVisible(true);
-        gameBoard();
+        mm.getGUI(frame,buttons,this);
+        mm.setBoard();
     }
 
-    private void setFlagImage() {
-        flag = new ImageIcon("src\\resources\\flag.png");
-        Image img = flag.getImage();
+    private ImageIcon setImage(String filename){
+        ImageIcon image = new ImageIcon(filename);
+        Image img = image.getImage();
         Image newimg = img.getScaledInstance( buttons[0][0].getWidth(), buttons[0][0].getHeight(),  java.awt.Image.SCALE_SMOOTH );
-        flag = new ImageIcon(newimg);
+        return new ImageIcon(newimg);
     }
 
     private void setButtons() {
         buttons = new JButton[boardSize][boardSize];
         for (int row = 0; row < boardSize; row++) {
             for (int col = 0; col < boardSize; col++) {
-                buttons[row][col] = new JButton();
-                buttons[row][col].setSize(frame.getWidth() / boardSize, frame.getHeight() / boardSize);
-                board.add(buttons[row][col]);
+                buttons[col][row] = new JButton();
+                buttons[col][row].setSize(frame.getWidth() / boardSize, frame.getHeight() / boardSize);
+                board.add(buttons[col][row]);
                 int finalCol = col;
                 int finalRow = row;
-                buttons[row][col].addMouseListener(new MouseAdapter() {
+                buttons[col][row].addMouseListener(new MouseAdapter() {
                     @Override
                     public void mouseClicked(MouseEvent e) {
                         super.mouseClicked(e);
                         if (SwingUtilities.isRightMouseButton(e)){
-                            if (buttons[finalRow][finalCol].getIcon() == null){
-                                buttons[finalRow][finalCol].setIcon(flag);
+                            if (buttons[finalCol][finalRow].getIcon() == null){
+                                buttons[finalCol][finalRow].setIcon(flag);
                                 bombAmount--;
                                 status.setText(bombAmount+"");
                             }
                             else{
-                                buttons[finalRow][finalCol].setIcon(null);
+                                buttons[finalCol][finalRow].setIcon(null);
                                 bombAmount++;
                                 status.setText(bombAmount+"");
                             }
                         }
                         else{
-                            if (buttons[finalRow][finalCol].getIcon() != null){
-                                buttons[finalRow][finalCol].setIcon(null);
-                                mm.buttonPressed(finalRow, finalCol);
+                            if (buttons[finalCol][finalRow].getIcon() != null){
+                                buttons[finalCol][finalRow].setIcon(null);
+                                mm.buttonPressed(new Point(finalCol,finalRow));
                             }
                             else
-                                mm.buttonPressed(finalRow,finalCol);
+                                mm.buttonPressed(new Point(finalCol,finalRow));
                         }
                     }
                 });
@@ -96,22 +113,6 @@ public class Minesweeper {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
 
-    private void setDifficulty(Difficulty d){
-        difficulty = d;
-        if (difficulty == Difficulty.EASY){
-            boardSize = 10;
-            bombAmount = 10;
-        }
-        else if (difficulty == Difficulty.MEDIUM){
-            boardSize = 16;
-            bombAmount = 40;
-        }
-        else if (difficulty == Difficulty.HARD){
-            boardSize = 24;
-            bombAmount = 99;
-        }
-    }
-
     private void setMenu() {
         menuBar.add(menu);
         easy.addActionListener(e -> {
@@ -133,11 +134,6 @@ public class Minesweeper {
         });
         menu.add(hard);
         frame.setJMenuBar(menuBar);
-    }
-
-    public void gameBoard() {
-        mm = new MinesweeperModel(boardSize,bombAmount,buttons,difficulty,frame,this);
-        mm.setBoard();
     }
 
     public static void main(String[] args) {

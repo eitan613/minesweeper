@@ -1,106 +1,94 @@
 import javax.swing.*;
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.Random;
+import java.util.*;
 
 public class MinesweeperModel {
     private ArrayList<Point> surroundingButtons = new ArrayList<>(9);
-    private boolean[][] board;
-    private boolean[][] playedYet;
+    private ArrayList<Point> mines = new ArrayList<>();
+    private ArrayList<Point> alreadyClicked = new ArrayList<>(90);
+    private Point neighbor = new Point();
     private JButton[][] buttons;
     private JFrame frame;
-    private Random randomInt;
-    private boolean gameOver;
-    private ImageIcon bomb;
+    private Random randomInt = new Random();
     private int bombAmount;
     private int boardSize;
     private Minesweeper.Difficulty difficulty;
-    private Minesweeper m;
+    private Minesweeper minesweeper;
 
-    public MinesweeperModel(int boardSize, int bombAmount, JButton[][] buttons, Minesweeper.Difficulty difficulty, JFrame frame, Minesweeper m){
-        this.boardSize = boardSize;
-        this.bombAmount = bombAmount;
-        this.buttons = buttons;
-        this.difficulty = difficulty;
-        this.frame = frame;
-        this.m = m;
-        board = new boolean[boardSize][boardSize];
-        playedYet= new boolean[boardSize][boardSize];
+    public MinesweeperModel(Minesweeper.Difficulty d){
+        setDifficulty(d);
         for (int r = -1; r < 2; r++)
             for (int c = -1; c < 2; c++)
-                surroundingButtons.add(new Point(r,c));
-        surroundingButtons.remove(4);
-        randomInt = new Random();
-        gameOver = false;
-        bomb = new ImageIcon("src\\resources\\bomb.png");
-        Image img = bomb.getImage();
-        Image newimg = img.getScaledInstance( buttons[0][0].getWidth(), buttons[0][0].getHeight(),  java.awt.Image.SCALE_SMOOTH );
-        bomb = new ImageIcon(newimg);
+                surroundingButtons.add(new Point(c,r));
+        surroundingButtons.remove(4);//0,0=self
     }
 
-    public void setBoard() {
-        int row;
-        int column;
-        for (int i = 0; i < bombAmount; i++) {
-            do {
-                row = randomInt.nextInt(boardSize);
-                column = randomInt.nextInt(boardSize);
-            } while (board[row][column]);
-            board[row][column] = true; //true == bomb
+    private void setDifficulty(Minesweeper.Difficulty d) {
+        difficulty = d;
+        if (difficulty == Minesweeper.Difficulty.EASY){
+            boardSize = 10;
+            bombAmount = 10;
+        }
+        else if (difficulty == Minesweeper.Difficulty.MEDIUM){
+            boardSize = 16;
+            bombAmount = 40;
+        }
+        else if (difficulty == Minesweeper.Difficulty.HARD){
+            boardSize = 24;
+            bombAmount = 99;
         }
     }
 
-    private int checkSurroundingButtons(int row, int col) {
+    public void setBoard() {
+        int row, column;
+        for (int i = 0; i < bombAmount; i++){
+            do{
+                row = randomInt.nextInt(boardSize);
+                column = randomInt.nextInt(boardSize);
+            }while(mines.contains(new Point(column,row)));
+            Point newMine = new Point(column,row);
+            mines.add(newMine);
+        }
+    }
+
+    private int checkSurroundingButtons(Point pointPressed) {
         int total = 0;
-        int x,y;
-        for (Point p : surroundingButtons) {
-            x = (int)p.getX()+row;
-            y = (int) p.getY()+col;
-            if (x >= 0 && x < boardSize && y >= 0 && y < boardSize)
-                if (board[x][y])
+        for (Point offset : surroundingButtons) {
+            neighbor.setLocation(offset.getX()+pointPressed.getX(), offset.getY()+pointPressed.getY());
+                if (mines.contains(neighbor))
                     total++;
         }
         return total;
     }
 
-    public void buttonPressed(int row, int col) {
-        if (board[row][col]) //bomb
-        {
-            for (int r = 0; r < boardSize; r++) {
-                for (int c = 0; c < boardSize; c++) {
-                    if (board[r][c])
-                        buttons[r][c].setIcon(bomb);
-                }
-            }
-            gameOver = true;
+    private boolean withinBounds(Point point) {
+        return point.getY() < boardSize && point.getY() >= 0 && point.getX() < boardSize && point.getX() >= 0;
+    }
+
+    public void buttonPressed(Point pointPressed) {
+        if (mines.contains(pointPressed)){
+            minesweeper.placeBombIcons();
             playAgain();
         }
-        else if (!gameOver){
-            int SurroundingBombs = checkSurroundingButtons(row, col);
-            if (SurroundingBombs > 0)
-                buttons[row][col].setText(SurroundingBombs + "");
-            buttons[row][col].setEnabled(false);
-            playedYet[row][col] = true;
+        else{
+            int surroundingBombs = checkSurroundingButtons(pointPressed);
+            int row = (int) pointPressed.getY();
+            int col = (int) pointPressed.getX();
+            if (surroundingBombs > 0)
+                buttons[col][row].setText(surroundingBombs + "");
+            buttons[col][row].setEnabled(false);
+            alreadyClicked.add(pointPressed);
 
-            if (SurroundingBombs == 0) {
-                for (Point p: surroundingButtons){
-                    int x = (int) p.getX()+row;
-                    int y = (int) p.getY()+col;
-                    if (x >= 0 && x < boardSize && y >= 0 && y < boardSize && !playedYet[x][y])
-                        buttonPressed(x,y);
+            if (surroundingBombs == 0) {
+                for (Point offset: surroundingButtons){
+                    neighbor.setLocation(offset.getX()+pointPressed.getX(), offset.getY()+pointPressed.getY());
+                    if (withinBounds(neighbor) && !alreadyClicked.contains(neighbor))
+                        buttonPressed(new Point(neighbor));
                 }
             }
-            int pressedButtons = 0;
-            for (int r = 0; r < boardSize; r++) {
-                for (int c = 0; c < boardSize; c++) {
-                    if (!board[r][c] && playedYet[r][c])
-                        pressedButtons++;
-                }
-            }
-            if (pressedButtons == 90)
-            {
+
+            if (alreadyClicked.size() == boardSize-bombAmount)
                 playAgain();
-            }
         }
     }
 
@@ -109,16 +97,30 @@ public class MinesweeperModel {
             String replay = JOptionPane.showInputDialog("Type play again to play again.");
             if (replay.equalsIgnoreCase("play again")) {
                 frame.dispose();
-                m = null;
                 Minesweeper minesweeper = new Minesweeper(difficulty);
             }
-            else{
+            else
                 frame.dispose();
-                m = null;
-            }
         } catch (NullPointerException e){
             frame.dispose();
-            m = null;
         }
+    }
+
+    public int getBoardSize() {
+        return boardSize;
+    }
+
+    public int getBombAmount() {
+        return bombAmount;
+    }
+
+    public void getGUI(JFrame frame, JButton[][] buttons, Minesweeper minesweeper) {
+        this.frame = frame;
+        this.buttons = buttons;
+        this.minesweeper = minesweeper;
+    }
+
+    public boolean isBomb(Point location) {
+        return mines.contains(location);
     }
 }
